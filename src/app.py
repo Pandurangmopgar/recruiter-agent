@@ -235,6 +235,15 @@ def handle_greeting():
     return create_personal_info_form()
 
 def handle_tech_stack(name: str):
+    """Create and handle the technical skills form"""
+    # Validate that we have personal info before proceeding
+    if not hasattr(st.session_state, 'personal_info') or not st.session_state.personal_info:
+        st.error("Please complete your personal information first.")
+        if st.button("Return to Personal Information"):
+            st.session_state.current_stage = 'greeting'
+            st.rerun()
+        return None, False
+
     st.markdown(f"""
         <div class="chat-message assistant-message">
             <h3>Technical Skills Assessment</h3>
@@ -771,22 +780,20 @@ def create_tech_stack_form():
         )
         
         if submit_button:
-            with st.spinner(""):
-                st.markdown("""
-                    <div class="loading-spinner"></div>
-                    <p class="processing-text" style="text-align: center;">Processing your technical skills...</p>
-                """, unsafe_allow_html=True)
-                all_skills = languages + frontend + backend + databases + cloud_devops
-                if other_skills:
-                    additional_skills = [skill.strip() for skill in other_skills.split(',') if skill.strip()]
-                    all_skills.extend(additional_skills)
-                
-                if all_skills:
-                    return list(set(all_skills)), True  # Remove duplicates
-                else:
-                    st.error("Please select at least one skill.")
-                    return None, False
-            return None, False
+            # Validate at least one skill is selected
+            all_skills = languages + frontend + backend + databases + cloud_devops
+            if other_skills:
+                additional_skills = [skill.strip() for skill in other_skills.split(',') if skill.strip()]
+                all_skills.extend(additional_skills)
+            
+            if not all_skills:
+                st.error("Please select at least one technical skill before proceeding.")
+                return None, False
+
+            with st.spinner("Processing your technical skills..."):
+                return list(set(all_skills)), True  # Remove duplicates
+
+        return None, False
 
 def manage_session_state():
     """Centralized session state management"""
@@ -848,45 +855,127 @@ def main():
         </div>
     """, unsafe_allow_html=True)
     
-    # Progress tracking
+    # Progress tracking with improved colors and indicators
     stages = ['greeting', 'tech_stack', 'tech_questions', 'completed']
     stage_names = ['Personal Info', 'Technical Skills', 'Interview', 'Completed']
+    stage_colors = {
+        'completed': '#4CAF50',  # Green for completed stages
+        'current': '#FF9800',    # Orange for current stage
+        'pending': '#E0E0E0'     # Light grey for pending stages
+    }
+    stage_icons = {
+        'completed': '✅',
+        'current': '🔸',
+        'pending': '⭕'
+    }
     current_index = stages.index(st.session_state.current_stage)
     
-    # Progress bar
+    # Progress bar with gradient colors
+    progress_color = f"""
+        <style>
+        .stProgress > div > div > div {{
+            background-image: linear-gradient(to right, #4CAF50, #FF9800) !important;
+        }}
+        </style>
+    """
+    st.markdown(progress_color, unsafe_allow_html=True)
     st.progress((current_index) / (len(stages) - 1))
     
-    # Stage indicators
+    # Stage indicators with improved styling
+    st.markdown("""
+        <style>
+        .stage-indicator {
+            padding: 8px 12px;
+            border-radius: 15px;
+            margin: 5px;
+            font-weight: 500;
+            text-align: center;
+        }
+        .stage-completed {
+            background-color: #E8F5E9;
+            color: #2E7D32;
+            border: 2px solid #4CAF50;
+        }
+        .stage-current {
+            background-color: #FFF3E0;
+            color: #E65100;
+            border: 2px solid #FF9800;
+            animation: pulse 2s infinite;
+        }
+        .stage-pending {
+            background-color: #FAFAFA;
+            color: #757575;
+            border: 2px solid #E0E0E0;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255,152,0,0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255,152,0,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,152,0,0); }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     cols = st.columns(len(stages))
     for i, (stage, name) in enumerate(zip(stages, stage_names)):
         with cols[i]:
             if i < current_index:
-                st.markdown(f"✅ {name}")
+                st.markdown(f"""
+                    <div class="stage-indicator stage-completed">
+                        {stage_icons['completed']} {name}
+                    </div>
+                """, unsafe_allow_html=True)
             elif i == current_index:
-                st.markdown(f"🔵 {name}")
+                st.markdown(f"""
+                    <div class="stage-indicator stage-current">
+                        {stage_icons['current']} {name}
+                    </div>
+                """, unsafe_allow_html=True)
             else:
-                st.markdown(f"⚪ {name}")
+                st.markdown(f"""
+                    <div class="stage-indicator stage-pending">
+                        {stage_icons['pending']} {name}
+                    </div>
+                """, unsafe_allow_html=True)
     
-    # Main content
-    if st.session_state.current_stage == 'greeting':
-        info, submitted = handle_greeting()
-        if submitted and info:
-            st.session_state.personal_info = info
-            st.session_state.current_stage = 'tech_stack'
-            st.rerun()
+    # Add spacing after progress indicators
+    st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
     
-    elif st.session_state.current_stage == 'tech_stack':
-        skills, submitted = handle_tech_stack(st.session_state.personal_info['full_name'])
-        if submitted and skills:
-            st.session_state.tech_stack = skills
-            st.session_state.current_stage = 'tech_questions'
-            st.rerun()
-    
-    elif st.session_state.current_stage == 'tech_questions':
-        handle_technical_interview(st.session_state.tech_stack)
-    
-    elif st.session_state.current_stage == 'completed':
-        handle_completion()
+    # Main content with improved error handling
+    try:
+        if st.session_state.current_stage == 'greeting':
+            info, submitted = handle_greeting()
+            if submitted:
+                if info:
+                    st.session_state.personal_info = info
+                    st.session_state.current_stage = 'tech_stack'
+                    st.rerun()
+                else:
+                    st.error("Please complete all required fields in the personal information form.")
+        
+        elif st.session_state.current_stage == 'tech_stack':
+            # Validate personal info exists
+            if not hasattr(st.session_state, 'personal_info') or not st.session_state.personal_info:
+                st.error("Personal information is missing. Returning to the previous step.")
+                st.session_state.current_stage = 'greeting'
+                st.rerun()
+            
+            skills, submitted = handle_tech_stack(st.session_state.personal_info.get('full_name', ''))
+            if submitted:
+                if skills:
+                    st.session_state.tech_stack = skills
+                    st.session_state.current_stage = 'tech_questions'
+                    st.rerun()
+                else:
+                    st.error("Please select at least one technical skill before proceeding.")
+        
+        elif st.session_state.current_stage == 'tech_questions':
+            handle_technical_interview(st.session_state.tech_stack)
+        
+        elif st.session_state.current_stage == 'completed':
+            handle_completion()
+
+    except Exception as e:
+        handle_error(e, "main flow")
 
 if __name__ == "__main__":
     main()
