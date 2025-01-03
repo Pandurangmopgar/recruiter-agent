@@ -8,8 +8,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from io import BytesIO
 
-def set_custom_css():
-    st.markdown("""
+@st.cache_resource
+def get_custom_css():
+    """Cache CSS to avoid recomputing on every rerun"""
+    return """
         <style>
         /* Main container */
         .stApp {
@@ -214,7 +216,10 @@ def set_custom_css():
             100% { opacity: 0.6; }
         }
         </style>
-    """, unsafe_allow_html=True)
+    """
+
+def set_custom_css():
+    st.markdown(get_custom_css(), unsafe_allow_html=True)
 
 def format_message(message: str) -> str:
     """Format message text for better readability"""
@@ -249,16 +254,14 @@ def handle_technical_interview(skills: list):
                 <p class="processing-text" style="text-align: center;">Analyzing your skills and generating relevant questions...</p>
             """, unsafe_allow_html=True)
             try:
-                # Generate questions based on skills
-                questions = st.session_state.conversation_handler.generate_technical_questions(skills)
-                if not questions or len(questions) == 0:
-                    st.error("Failed to generate technical questions. Please try again.")
-                    return
-                
+                # Pre-generate evaluations criteria along with questions
+                questions, evaluation_criteria = st.session_state.conversation_handler.generate_technical_questions_and_criteria(skills)
                 st.session_state.tech_questions = questions
+                st.session_state.evaluation_criteria = evaluation_criteria  # Store criteria for faster evaluation
                 st.session_state.current_question = 0
                 st.session_state.tech_questions_initialized = True
                 st.session_state.responses = []
+                st.rerun()
                 
             except Exception as e:
                 st.error(f"Error initializing technical interview: {str(e)}")
@@ -424,11 +427,9 @@ def handle_completion():
             st.session_state.clear()
             st.rerun()
 
+@st.cache_data
 def preprocess_ai_response(response: str) -> dict:
-    """
-    Preprocess AI response to extract and format different sections
-    Returns a dictionary with structured response data
-    """
+    """Cache AI response preprocessing"""
     sections = {
         'strengths': [],
         'areas_for_improvement': [],
@@ -520,8 +521,9 @@ def format_ai_response_html(response: str) -> str:
     html += '</div>'
     return html
 
+@st.cache_data
 def generate_interview_summary(session_state):
-    """Generate a PDF summary of the interview with proper error handling"""
+    """Cache the PDF generation to avoid regenerating for the same data"""
     try:
         # Initialize PDF buffer
         buffer = BytesIO()
@@ -649,6 +651,13 @@ def generate_interview_summary(session_state):
         st.error(f"Error generating PDF: {str(e)}")
         return None
 
+def validate_form_data(form_data: dict, required_fields: list) -> tuple[bool, str]:
+    """Centralized form validation"""
+    missing_fields = [field for field in required_fields if not form_data.get(field)]
+    if missing_fields:
+        return False, f"Please fill in: {', '.join(missing_fields)}"
+    return True, ""
+
 def create_personal_info_form():
     """Create and handle the personal information form"""
     with st.form("personal_info_form", clear_on_submit=True):
@@ -677,18 +686,22 @@ def create_personal_info_form():
         )
         
         if submit_button:
-            if all([full_name, email, phone, experience, position, location]):
-                return {
-                    "full_name": full_name,
-                    "email": email,
-                    "phone": phone,
-                    "experience": experience,
-                    "desired_position": position,
-                    "location": location
-                }, True
-            else:
-                st.error("Please fill in all required fields.")
-                return None, False
+            form_data = {
+                "full_name": full_name,
+                "email": email,
+                "phone": phone,
+                "experience": experience,
+                "desired_position": position,
+                "location": location
+            }
+            is_valid, error_message = validate_form_data(
+                form_data,
+                ["full_name", "email", "phone", "experience", "desired_position", "location"]
+            )
+            if is_valid:
+                return form_data, True
+            st.error(error_message)
+            return None, False
         return None, False
 
 def create_tech_stack_form():
@@ -775,7 +788,49 @@ def create_tech_stack_form():
                     return None, False
             return None, False
 
+def manage_session_state():
+    """Centralized session state management"""
+    if 'initialized' not in st.session_state:
+        st.session_state.update({
+            'initialized': True,
+            'current_stage': 'greeting',
+            'session_id': str(uuid.uuid4()),
+            'conversation_handler': ConversationHandler(),
+            'tech_questions_initialized': False,
+            'responses': [],
+            'current_question': 0
+        })
+
+def safe_state_reset():
+    """Safely reset application state"""
+    keep_keys = ['initialized', 'session_id']
+    preserved_values = {k: st.session_state[k] for k in keep_keys if k in st.session_state}
+    st.session_state.clear()
+    st.session_state.update(preserved_values)
+    st.session_state.current_stage = 'greeting'
+
+def handle_error(error: Exception, context: str):
+    """Centralized error handling"""
+    st.error(f"Error in {context}: {str(error)}")
+    if st.button("Reset Application"):
+        safe_state_reset()
+        st.rerun()
+
+def track_interview_progress():
+    """Track and store interview progress metrics"""
+    if 'metrics' not in st.session_state:
+        st.session_state.metrics = {
+            'start_time': time.time(),
+            'questions_answered': 0,
+            'total_time_spent': 0
+        }
+    
+    if hasattr(st.session_state, 'responses'):
+        st.session_state.metrics['questions_answered'] = len(st.session_state.responses)
+        st.session_state.metrics['total_time_spent'] = time.time() - st.session_state.metrics['start_time']
+
 def main():
+    manage_session_state()
     st.set_page_config(
         page_title="TalentScout AI Assistant",
         page_icon="👨‍💼",
@@ -784,13 +839,6 @@ def main():
     )
     
     set_custom_css()
-    
-    # Initialize session state
-    if 'initialized' not in st.session_state:
-        st.session_state.initialized = True
-        st.session_state.current_stage = 'greeting'
-        st.session_state.session_id = str(uuid.uuid4())
-        st.session_state.conversation_handler = ConversationHandler()
     
     # Header
     st.markdown("""
