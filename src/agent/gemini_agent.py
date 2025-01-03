@@ -1,8 +1,11 @@
+from dotenv import load_dotenv
+import os
 import google.generativeai as genai
 from typing import Dict, List, Optional
 
-# Import settings directly
-GOOGLE_API_KEY = "AIzaSyCPAXJvnOMK23-fvhA1XkaeBaZli9qqhgk"  # Replace with your actual API key
+# Load environment variables
+load_dotenv()
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 GEMINI_MODEL = "gemini-1.5-flash"
 TEMPERATURE = 0.7
 TOP_P = 0.9

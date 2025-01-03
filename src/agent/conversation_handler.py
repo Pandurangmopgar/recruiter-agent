@@ -1,10 +1,13 @@
+from dotenv import load_dotenv
+import os
 import google.generativeai as genai
 from typing import List, Tuple, Dict, Any
 
 class ConversationHandler:
     def __init__(self):
-        # Initialize Gemini AI
-        GOOGLE_API_KEY = "AIzaSyCPAXJvnOMK23-fvhA1XkaeBaZli9qqhgk"  # Replace with your actual API key
+        # Load environment variables and configure Gemini AI
+        load_dotenv()
+        GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
         genai.configure(api_key=GOOGLE_API_KEY)
         self.model = genai.GenerativeModel('gemini-pro')
         self.chat = self.model.start_chat(history=[])
