@@ -27,11 +27,11 @@ class ConversationHandler:
                - Technical concepts
                - Best practices
             3. Questions should be challenging but answerable
-            4. Format each question clearly with numbering (1-5)
+            4. Format each question with difficulty level in square brackets
             
             Example format:
-            1. [Difficulty: Medium] Question about skill...?
-            2. [Difficulty: Hard] Technical scenario question...?
+            [Difficulty: Medium] Question about skill...
+            [Difficulty: Hard] Technical scenario question...
             
             Please generate questions now.
             """
@@ -49,6 +49,11 @@ class ConversationHandler:
                 if line and any(line.startswith(str(i)) for i in range(1, 6)):
                     # Remove numbering and clean up
                     question = line.split('.', 1)[1].strip()
+                    # Remove any existing ** markers
+                    question = question.replace('**', '')
+                    # Check if difficulty is already in square brackets, if not add it
+                    if not question.startswith('['):
+                        question = '[Difficulty: Medium] ' + question
                     questions.append(question)
 
             # Ensure we have exactly 5 questions

@@ -179,6 +179,40 @@ def set_custom_css():
             margin: 5px 0;
             line-height: 1.5;
         }
+        
+        /* Loading animation */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+        
+        .loading-spinner::after {
+            content: "";
+            width: 40px;
+            height: 40px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #1976d2;
+            border-radius: 50%;
+            animation: spinner 1s linear infinite;
+        }
+        
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Pulse animation for processing text */
+        .processing-text {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -209,21 +243,26 @@ def handle_technical_interview(skills: list):
     
     # Initialize technical interview session if not already done
     if 'tech_questions_initialized' not in st.session_state:
-        try:
-            # Generate questions based on skills
-            questions = st.session_state.conversation_handler.generate_technical_questions(skills)
-            if not questions or len(questions) == 0:
-                st.error("Failed to generate technical questions. Please try again.")
+        with st.spinner("🤖 AI is preparing your technical questions..."):
+            st.markdown("""
+                <div class="loading-spinner"></div>
+                <p class="processing-text" style="text-align: center;">Analyzing your skills and generating relevant questions...</p>
+            """, unsafe_allow_html=True)
+            try:
+                # Generate questions based on skills
+                questions = st.session_state.conversation_handler.generate_technical_questions(skills)
+                if not questions or len(questions) == 0:
+                    st.error("Failed to generate technical questions. Please try again.")
+                    return
+                
+                st.session_state.tech_questions = questions
+                st.session_state.current_question = 0
+                st.session_state.tech_questions_initialized = True
+                st.session_state.responses = []
+                
+            except Exception as e:
+                st.error(f"Error initializing technical interview: {str(e)}")
                 return
-            
-            st.session_state.tech_questions = questions
-            st.session_state.current_question = 0
-            st.session_state.tech_questions_initialized = True
-            st.session_state.responses = []
-            
-        except Exception as e:
-            st.error(f"Error initializing technical interview: {str(e)}")
-            return
 
     # Safety check for questions
     if not hasattr(st.session_state, 'tech_questions') or not st.session_state.tech_questions:
@@ -281,8 +320,11 @@ def handle_technical_interview(skills: list):
             )
 
         if submit_button and answer:
-            # Show processing indicator
-            with st.spinner("AI is evaluating your response..."):
+            with st.spinner(""):  # Empty spinner to prevent double spinners
+                st.markdown("""
+                    <div class="loading-spinner"></div>
+                    <p class="processing-text" style="text-align: center;">AI is analyzing your response...</p>
+                """, unsafe_allow_html=True)
                 try:
                     response = st.session_state.conversation_handler.evaluate_answer(
                         current_question,
@@ -356,7 +398,11 @@ def handle_completion():
         col1, col2 = st.columns([1, 2])
         with col1:
             if st.button("Generate PDF Summary", type="primary"):
-                with st.spinner("Generating PDF..."):
+                with st.spinner(""):  # Empty spinner to prevent double spinners
+                    st.markdown("""
+                        <div class="loading-spinner"></div>
+                        <p class="processing-text" style="text-align: center;">Generating your comprehensive interview summary...</p>
+                    """, unsafe_allow_html=True)
                     pdf_buffer = generate_interview_summary(st.session_state)
                     if pdf_buffer:
                         st.session_state.pdf_buffer = pdf_buffer
@@ -712,17 +758,22 @@ def create_tech_stack_form():
         )
         
         if submit_button:
-            all_skills = languages + frontend + backend + databases + cloud_devops
-            if other_skills:
-                additional_skills = [skill.strip() for skill in other_skills.split(',') if skill.strip()]
-                all_skills.extend(additional_skills)
-            
-            if all_skills:
-                return list(set(all_skills)), True  # Remove duplicates
-            else:
-                st.error("Please select at least one skill.")
-                return None, False
-        return None, False
+            with st.spinner(""):
+                st.markdown("""
+                    <div class="loading-spinner"></div>
+                    <p class="processing-text" style="text-align: center;">Processing your technical skills...</p>
+                """, unsafe_allow_html=True)
+                all_skills = languages + frontend + backend + databases + cloud_devops
+                if other_skills:
+                    additional_skills = [skill.strip() for skill in other_skills.split(',') if skill.strip()]
+                    all_skills.extend(additional_skills)
+                
+                if all_skills:
+                    return list(set(all_skills)), True  # Remove duplicates
+                else:
+                    st.error("Please select at least one skill.")
+                    return None, False
+            return None, False
 
 def main():
     st.set_page_config(

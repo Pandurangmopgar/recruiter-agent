@@ -1,7 +1,7 @@
 TALENTSCOUT AI - TECHNICAL INTERVIEW ASSISTANT
 ============================================
 Version: 1.0.0
-Last Updated: 2024
+Last Updated: 2025
 Documentation Type: Technical Specification
 
 TABLE OF CONTENTS
