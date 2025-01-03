@@ -1,0 +1,212 @@
+TALENTSCOUT AI - TECHNICAL INTERVIEW ASSISTANT
+============================================
+Version: 1.0.0
+Last Updated: 2024
+Documentation Type: Technical Specification
+
+TABLE OF CONTENTS
+----------------
+1. Project Overview
+2. Technical Requirements
+3. System Architecture 
+4. Implementation Details
+5. Security & Privacy
+6. Testing Strategy
+7. Deployment Guide
+8. Known Issues
+9. Future Enhancements
+
+1. PROJECT OVERVIEW
+------------------
+Purpose:
+- Automate technical screening process
+- Provide consistent candidate evaluation
+- Generate comprehensive interview reports
+- Save interviewer time and resources
+
+Key Features:
+- Dynamic question generation based on tech stack
+- Real-time response evaluation using Gemini AI
+- PDF report generation
+- Multi-stage interview process
+- Context-aware conversations
+
+2. TECHNICAL REQUIREMENTS
+------------------------
+Core Technologies:
+- Python 3.8+
+- Streamlit 1.28+
+- Google Gemini-1.5-Flash model
+- ReportLab for PDF generation
+
+Dependencies:
+- google-generativeai
+- python-dotenv
+- streamlit
+- reportlab
+- pandas
+- pytest (development)
+
+Environment Variables:
+GOOGLE_API_KEY=<api_key>
+MODEL_NAME=gemini-1.5-flash
+MAX_TOKENS=2048
+TEMPERATURE=0.7
+
+3. SYSTEM ARCHITECTURE
+---------------------
+Components:
+
+a) Frontend Layer (Streamlit):
+- User interface components
+- Progress tracking
+- State management
+- File downloads
+
+b) Backend Layer:
+- Conversation handler
+- AI integration
+- Response processing
+- PDF generation
+
+c) AI Integration:
+- Gemini model integration
+- Context management
+- Response evaluation
+- Question generation
+
+4. IMPLEMENTATION DETAILS
+------------------------
+Interview Flow:
+
+1. Personal Information Collection:
+   - Name, email, phone
+   - Experience level
+   - Desired position
+   - Current location
+
+2. Technical Skills Assessment:
+   - Programming languages
+   - Frameworks
+   - Tools & technologies
+   - Experience levels
+
+3. Technical Interview:
+   - Dynamic question generation
+   - Real-time evaluation
+   - Progress tracking
+   - Context preservation
+
+4. Report Generation:
+   - Performance summary
+   - Question-answer pairs
+   - AI evaluations
+   - Recommendations
+
+Key Classes & Functions:
+
+conversation_handler.py:
+- handle_conversation()
+- generate_questions()
+- evaluate_response()
+- maintain_context()
+
+pdf_generator.py:
+- generate_report()
+- format_responses()
+- create_summary()
+
+5. SECURITY & PRIVACY
+--------------------
+Data Protection:
+- No permanent storage of personal data
+- Session-based data handling
+- Secure API key management
+- Input sanitization
+
+Privacy Measures:
+- Data minimization
+- Session timeout
+- Secure transmission
+- Access controls
+
+6. TESTING STRATEGY
+------------------
+Test Categories:
+
+1. Unit Tests:
+   - Question generation
+   - Response evaluation
+   - PDF creation
+   - Input validation
+
+2. Integration Tests:
+   - Full interview flow
+   - AI integration
+   - State management
+   - Error handling
+
+3. Performance Tests:
+   - Response times
+   - Memory usage
+   - Concurrent users
+   - API limits
+
+7. DEPLOYMENT GUIDE
+------------------
+Local Deployment:
+
+1. Clone repository:
+   git clone https://github.com/Pandurangmopgar/recruiter-agent.git
+2. Create virtual environment:
+   python -m venv venv
+   source venv/bin/activate
+
+3. Install dependencies:
+   pip install -r requirements.txt
+
+4. Configure environment:
+   cp .env.example .env
+   # Add Google API key
+
+5. Run application:
+   streamlit run src/app.py
+
+8. KNOWN ISSUES
+--------------
+Current Limitations:
+1. English language only
+2. Internet dependency
+3. API rate limits
+4. Token limitations
+
+Workarounds:
+1. Fallback question bank
+2. Response caching
+3. Error recovery
+4. Session management
+
+9. FUTURE ENHANCEMENTS
+---------------------
+Planned Features:
+1. Multi-language support
+2. Sentiment analysis
+3. Code execution
+4. Video interview
+5. Cloud deployment
+6. Enhanced question bank
+7. Custom evaluation metrics
+
+Technical Improvements:
+1. Response optimization
+2. Enhanced error handling
+3. Better state management
+4. Improved PDF generation
+5. Advanced context handling
+
+CONTACT & SUPPORT
+----------------
+Repository: https://github.com/Pandurangmopgar/recruiter-agent.git
+Support: pandurangmopgar@gmail.com
+
+END OF DOCUMENTATION 
