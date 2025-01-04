@@ -217,7 +217,7 @@ def get_custom_css():
         }
         </style>
     """
-
+    
 def set_custom_css():
     st.markdown(get_custom_css(), unsafe_allow_html=True)
 
@@ -257,24 +257,37 @@ def handle_technical_interview(skills: list):
     
     # Initialize technical interview session if not already done
     if 'tech_questions_initialized' not in st.session_state:
+        try:
+            # Generate questions based on skills
+            questions = st.session_state.conversation_handler.generate_technical_questions(skills)
+            if not questions or len(questions) == 0:
+                st.error("Failed to generate technical questions. Please try again.")
+                if st.button("Restart Interview"):
+                    st.session_state.clear()
+                    st.rerun()
+                return
+            
+            st.session_state.tech_questions = questions
+            st.session_state.current_question = 0
+            st.session_state.tech_questions_initialized = True
+            st.session_state.responses = []
+            st.rerun()  # Rerun to refresh the page without the loading animation
+            
+        except Exception as e:
+            st.error(f"Error initializing technical interview: {str(e)}")
+            if st.button("Restart Interview"):
+                st.session_state.clear()
+                st.rerun()
+            return
+
+    # Display loading animation only during initial question generation
+    if not st.session_state.get('tech_questions_initialized'):
         with st.spinner("🤖 AI is preparing your technical questions..."):
             st.markdown("""
                 <div class="loading-spinner"></div>
                 <p class="processing-text" style="text-align: center;">Analyzing your skills and generating relevant questions...</p>
             """, unsafe_allow_html=True)
-            try:
-                # Pre-generate evaluations criteria along with questions
-                questions, evaluation_criteria = st.session_state.conversation_handler.generate_technical_questions_and_criteria(skills)
-                st.session_state.tech_questions = questions
-                st.session_state.evaluation_criteria = evaluation_criteria  # Store criteria for faster evaluation
-                st.session_state.current_question = 0
-                st.session_state.tech_questions_initialized = True
-                st.session_state.responses = []
-                st.rerun()
-                
-            except Exception as e:
-                st.error(f"Error initializing technical interview: {str(e)}")
-                return
+            return
 
     # Safety check for questions
     if not hasattr(st.session_state, 'tech_questions') or not st.session_state.tech_questions:
@@ -364,7 +377,6 @@ def handle_technical_interview(skills: list):
                     # Progress to next question or complete
                     if current_q + 1 < total_q:
                         st.session_state.current_question += 1
-                        time.sleep(1)  # Brief pause to show feedback
                         st.rerun()
                     else:
                         st.session_state.current_stage = 'completed'
@@ -395,14 +407,7 @@ def handle_completion():
             with st.expander(f"Question {i}", expanded=True):
                 st.markdown(f"""
                     <div class="question-card">
-                        <p><strong>Question:</strong></p>
-                        <p>{resp['question']}</p>
-                        <br>
-                        <p><strong>Your Answer:</strong></p>
-                        <p>{resp['answer']}</p>
-                        <br>
-                        <p><strong>Evaluation:</strong></p>
-                        {format_ai_response_html(resp['evaluation'])}
+                        <p style="font-size: 1.1rem; font-weight: 500;">{resp['question']}</p>
                     </div>
                 """, unsafe_allow_html=True)
         
@@ -837,7 +842,6 @@ def track_interview_progress():
         st.session_state.metrics['total_time_spent'] = time.time() - st.session_state.metrics['start_time']
 
 def main():
-    manage_session_state()
     st.set_page_config(
         page_title="TalentScout AI Assistant",
         page_icon="👨‍💼",
@@ -847,6 +851,14 @@ def main():
     
     set_custom_css()
     
+    # Initialize session state
+    if 'initialized' not in st.session_state:
+        st.session_state.clear()  # Clear any existing state
+        st.session_state.initialized = True
+        st.session_state.current_stage = 'greeting'
+        st.session_state.session_id = str(uuid.uuid4())
+        st.session_state.conversation_handler = ConversationHandler()
+    
     # Header
     st.markdown("""
         <div class="header">
@@ -855,127 +867,51 @@ def main():
         </div>
     """, unsafe_allow_html=True)
     
-    # Progress tracking with improved colors and indicators
+    # Progress tracking
     stages = ['greeting', 'tech_stack', 'tech_questions', 'completed']
     stage_names = ['Personal Info', 'Technical Skills', 'Interview', 'Completed']
-    stage_colors = {
-        'completed': '#4CAF50',  # Green for completed stages
-        'current': '#FF9800',    # Orange for current stage
-        'pending': '#E0E0E0'     # Light grey for pending stages
-    }
-    stage_icons = {
-        'completed': '✅',
-        'current': '🔸',
-        'pending': '⭕'
-    }
     current_index = stages.index(st.session_state.current_stage)
     
-    # Progress bar with gradient colors
-    progress_color = f"""
-        <style>
-        .stProgress > div > div > div {{
-            background-image: linear-gradient(to right, #4CAF50, #FF9800) !important;
-        }}
-        </style>
-    """
-    st.markdown(progress_color, unsafe_allow_html=True)
+    # Progress bar
     st.progress((current_index) / (len(stages) - 1))
     
-    # Stage indicators with improved styling
-    st.markdown("""
-        <style>
-        .stage-indicator {
-            padding: 8px 12px;
-            border-radius: 15px;
-            margin: 5px;
-            font-weight: 500;
-            text-align: center;
-        }
-        .stage-completed {
-            background-color: #E8F5E9;
-            color: #2E7D32;
-            border: 2px solid #4CAF50;
-        }
-        .stage-current {
-            background-color: #FFF3E0;
-            color: #E65100;
-            border: 2px solid #FF9800;
-            animation: pulse 2s infinite;
-        }
-        .stage-pending {
-            background-color: #FAFAFA;
-            color: #757575;
-            border: 2px solid #E0E0E0;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255,152,0,0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255,152,0,0); }
-            100% { box-shadow: 0 0 0 0 rgba(255,152,0,0); }
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
+    # Stage indicators
     cols = st.columns(len(stages))
     for i, (stage, name) in enumerate(zip(stages, stage_names)):
         with cols[i]:
             if i < current_index:
-                st.markdown(f"""
-                    <div class="stage-indicator stage-completed">
-                        {stage_icons['completed']} {name}
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"✅ {name}")
             elif i == current_index:
-                st.markdown(f"""
-                    <div class="stage-indicator stage-current">
-                        {stage_icons['current']} {name}
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"🔵 {name}")
             else:
-                st.markdown(f"""
-                    <div class="stage-indicator stage-pending">
-                        {stage_icons['pending']} {name}
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"⚪ {name}")
     
-    # Add spacing after progress indicators
-    st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
+    # Main content
+    if st.session_state.current_stage == 'greeting':
+        info, submitted = handle_greeting()
+        if submitted and info:
+            st.session_state.personal_info = info
+            st.session_state.current_stage = 'tech_stack'
+            st.rerun()
     
-    # Main content with improved error handling
-    try:
-        if st.session_state.current_stage == 'greeting':
-            info, submitted = handle_greeting()
-            if submitted:
-                if info:
-                    st.session_state.personal_info = info
-                    st.session_state.current_stage = 'tech_stack'
-                    st.rerun()
-                else:
-                    st.error("Please complete all required fields in the personal information form.")
+    elif st.session_state.current_stage == 'tech_stack':
+        # Validate personal info exists
+        if not hasattr(st.session_state, 'personal_info') or not st.session_state.personal_info:
+            st.error("Personal information is missing. Returning to the previous step.")
+            st.session_state.current_stage = 'greeting'
+            st.rerun()
         
-        elif st.session_state.current_stage == 'tech_stack':
-            # Validate personal info exists
-            if not hasattr(st.session_state, 'personal_info') or not st.session_state.personal_info:
-                st.error("Personal information is missing. Returning to the previous step.")
-                st.session_state.current_stage = 'greeting'
-                st.rerun()
-            
-            skills, submitted = handle_tech_stack(st.session_state.personal_info.get('full_name', ''))
-            if submitted:
-                if skills:
-                    st.session_state.tech_stack = skills
-                    st.session_state.current_stage = 'tech_questions'
-                    st.rerun()
-                else:
-                    st.error("Please select at least one technical skill before proceeding.")
-        
-        elif st.session_state.current_stage == 'tech_questions':
-            handle_technical_interview(st.session_state.tech_stack)
-        
-        elif st.session_state.current_stage == 'completed':
-            handle_completion()
-
-    except Exception as e:
-        handle_error(e, "main flow")
+        skills, submitted = handle_tech_stack(st.session_state.personal_info['full_name'])
+        if submitted and skills:
+            st.session_state.tech_stack = skills
+            st.session_state.current_stage = 'tech_questions'
+            st.rerun()
+    
+    elif st.session_state.current_stage == 'tech_questions':
+        handle_technical_interview(st.session_state.tech_stack)
+    
+    elif st.session_state.current_stage == 'completed':
+        handle_completion()
 
 if __name__ == "__main__":
     main()
